@@ -1,0 +1,27 @@
+name: CI
+
+on: [push]
+
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    env:
+      KIT: robotics-course-kit-v1-w02-5d210c431e32.tar.gz
+      KIT_SHA256: 5d210c431e32418f45e2cffa9dd2028116c7a9520a36f3c7079c778cd73437a8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # checker сравнивает коммиты, нужна вся история
+
+      - name: Download course kit
+        run: |
+          curl -fsSLO "https://ros.lms.ci.nsu.ru/downloads/$KIT"
+          echo "$KIT_SHA256  $KIT" | sha256sum -c
+          mkdir -p .course-kit
+          tar -xzf "$KIT" -C .course-kit
+
+      - name: Check environment.json
+        run: python3 -m json.tool evidence/pr01/environment.json > /dev/null
+
+      - name: Check evidence
+        run: python3 .course-kit/v1/tools/check_practice.py PR01 --submission .
