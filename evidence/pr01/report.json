@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "practice_id": "PR01",
+  "commit": "51169fc694d57b9ccfa16e6f0ab44d9467a519a2",
+  "course_kit": {
+    "version": "v1-w02",
+    "archive_sha256": "5d210c431e32418f45e2cffa9dd2028116c7a9520a36f3c7079c778cd73437a8"
+  },
+  "commands": [
+    "docker run -d --name pr01 --platform linux/amd64 -v \"$PWD\":/work -w /work -e QT_QPA_PLATFORM=offscreen osrf/ros:jazzy-desktop-full sleep infinity",
+    "ros2 doctor --report > evidence/pr01/doctor.txt 2>&1",
+    "ros2 run turtlesim turtlesim_node",
+    "ros2 run turtlesim turtle_teleop_key",
+    "ros2 node list --no-daemon --spin-time 2",
+    "ros2 topic list -t",
+    "ros2 node info /turtlesim",
+    "ros2 topic type /turtle1/pose",
+    "ros2 topic echo /turtle1/pose --once",
+    "ros2 topic hz /turtle1/pose",
+    "ros2 topic info /turtle1/cmd_vel",
+    "timeout 5s ros2 topic echo /turtle1/pose \"$POSE_TYPE\" --once > evidence/pr01/pose-broken.txt 2>&1",
+    "timeout 5s ros2 topic echo /turtle1/pose \"$POSE_TYPE\" --once > evidence/pr01/pose-fixed.txt 2>&1"
+  ],
+  "tests": [
+    {"name": "граф: в домене 16 видны /turtlesim и /teleop_turtle, топики и типы сняты", "status": "passed"},
+    {"name": "частота /turtle1/pose: 62.5 Гц за 15 с", "status": "passed"},
+    {"name": "разрыв: из домена 17 поза не приходит за 5 с (exit=124)", "status": "passed"},
+    {"name": "восстановление: в домене 16 поза приходит (exit=0)", "status": "passed"}
+  ],
+  "defect": {
+    "reproducer": "Симулятор в домене 16, teleop перезапущен с ROS_DOMAIN_ID=17. Из домена 17 ros2 node list показывает только /teleop_turtle, timeout 5s ros2 topic echo /turtle1/pose \"$POSE_TYPE\" --once даёт exit=124, стрелки не двигают черепаху.",
+    "root_cause": "Разные ROS_DOMAIN_ID: участники DDS находят друг друга только внутри одного домена, поэтому teleop и CLI в домене 17 не видят /turtlesim из домена 16. Домен читается при запуске ноды, поэтому teleop нужно перезапускать.",
+    "proof_after": "teleop перезапущен с ROS_DOMAIN_ID=16, тот же тест из домена 16: видны обе ноды, у /turtle1/cmd_vel 1 publisher и 1 subscriber, поза пришла, exit=0, стрелки снова двигают черепаху."
+  },
+  "claims": {
+    "public_tests_passed": true,
+    "defect_reproduced": true,
+    "defect_fixed": true
+  },
+  "time": {
+    "contact_academic_hours": 2,
+    "self_study_hours": 4
+  },
+  "ai_used": true
+}
