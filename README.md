@@ -5,11 +5,11 @@
 
 ## Подготовка
 
-Course kit текущей недели (сейчас `v1-w03`) скачивается со страницы курса «Инструменты и входные файлы» и распаковывается в `.course-kit/` (в git не попадает):
+Course kit текущей недели (сейчас `v1-w04`) скачивается со страницы курса «Инструменты и входные файлы» и распаковывается в `.course-kit/` (в git не попадает):
 
 ```bash
 mkdir -p .course-kit
-tar -xzf robotics-course-kit-v1-w03-7fbfd3e8161a.tar.gz -C .course-kit
+tar -xzf robotics-course-kit-v1-w04-fec6b4e886c1.tar.gz -C .course-kit
 ```
 
 Контейнер запускается один раз из корня репозитория, репозиторий монтируется в `/work`:
@@ -163,6 +163,71 @@ ros2 topic info /turtle1/cmd_vel --verbose
 ```bash
 python3 -m py_compile src/turtle_bringup/launch/sim.launch.py
 python3 .course-kit/v1/tools/check_practice.py PR02 --submission .
+```
+
+## ПР03. Нода patrol
+
+Пакет `src/patrol`: нода `/patrol` подписана на `/turtle1/pose` и по таймеру 0.1 с публикует `Twist` в относительный топик `cmd_vel`. Пока позы нет — нулевая команда, после первой позы — `linear.x=0.5`, `angular.z=0.3`. Выбор команды вынесен в функцию `choose_command` (`patrol/command.py`), тесты в `test/test_command.py`.
+
+Пакет создан командой:
+
+```bash
+cd src
+ros2 pkg create --build-type ament_python --node-name patrol patrol \
+  --dependencies rclpy geometry_msgs
+cd ..
+```
+
+Сборка и тесты:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-select turtle_bringup patrol
+source install/setup.bash
+python3 -m pytest src/patrol/test 2>&1 | tee evidence/pr03/tests.txt
+```
+
+Терминал A — turtlesim:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+export ROS_DOMAIN_ID=16
+ros2 launch turtle_bringup sim.launch.py
+```
+
+Сбой: нода без remap публикует в `/cmd_vel`, черепаха стоит.
+
+```bash
+# терминал B
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+export ROS_DOMAIN_ID=16
+ros2 run patrol patrol
+# терминал C
+ros2 node list --no-daemon --spin-time 2
+ros2 topic info /cmd_vel --verbose
+ros2 topic info /turtle1/cmd_vel --verbose
+ros2 topic echo /turtle1/pose --once
+```
+
+Исправление: в B остановить ноду (Ctrl+C) и запустить с remap, в C повторить проверку и измерить частоту команды за 10 секунд.
+
+```bash
+# терминал B
+ros2 run patrol patrol --ros-args -r cmd_vel:=/turtle1/cmd_vel
+# терминал C
+ros2 topic info /turtle1/cmd_vel --verbose
+ros2 topic echo /turtle1/pose --once
+timeout -s INT 10s ros2 topic hz /turtle1/cmd_vel
+```
+
+Ожидается около 10 Гц, черепаха едет по кругу. После Ctrl+C в B черепаха останавливается.
+
+Проверка на хосте из корня репозитория:
+
+```bash
+python3 .course-kit/v1/tools/check_practice.py PR03 --submission .
 ```
 
 Остановить контейнер: `docker rm -f ros`.

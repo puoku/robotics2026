@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /work/src/patrol
+plugins: launch-testing-ros-0.26.12, ament-xmllint-0.17.5, launch-testing-3.4.11, ament-lint-0.17.5, ament-flake8-0.17.5, ament-copyright-0.17.5, ament-pep257-0.17.5, colcon-core-0.21.1
+collected 5 items
+
+src/patrol/test/test_command.py ..                                       [ 40%]
+src/patrol/test/test_copyright.py s                                      [ 60%]
+src/patrol/test/test_flake8.py .                                         [ 80%]
+src/patrol/test/test_pep257.py .                                         [100%]
+
+========================= 4 passed, 1 skipped in 0.26s =========================
