@@ -3,15 +3,15 @@ name: CI
 on: [push]
 
 jobs:
-  pr03:
+  pr04:
     runs-on: ubuntu-24.04
     container: osrf/ros:jazzy-desktop-full
     defaults:
       run:
         shell: bash
     env:
-      KIT: robotics-course-kit-v1-w04-fec6b4e886c1.tar.gz
-      KIT_SHA256: fec6b4e886c19146078bf69fbf90a19279a4cd33f656642395350b299efeb226
+      KIT: robotics-course-kit-v1-w06-6eda53e1c566.tar.gz
+      KIT_SHA256: 6eda53e1c566f7f0a7e09d7afe1e5a6f3b98397175a7e57dede9a84c6d14d0fe
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,4 +39,4 @@ jobs:
       - name: Check evidence
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          python3 .course-kit/v1/tools/check_practice.py PR03 --submission .
+          python3 .course-kit/v1/tools/check_practice.py PR04 --submission .

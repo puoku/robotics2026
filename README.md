@@ -5,11 +5,11 @@
 
 ## Подготовка
 
-Course kit текущей недели (сейчас `v1-w04`) скачивается со страницы курса «Инструменты и входные файлы» и распаковывается в `.course-kit/` (в git не попадает):
+Course kit текущей недели (сейчас `v1-w06`) скачивается со страницы курса «Инструменты и входные файлы» и распаковывается в `.course-kit/` (в git не попадает):
 
 ```bash
 mkdir -p .course-kit
-tar -xzf robotics-course-kit-v1-w04-fec6b4e886c1.tar.gz -C .course-kit
+tar -xzf robotics-course-kit-v1-w06-6eda53e1c566.tar.gz -C .course-kit
 ```
 
 Контейнер запускается один раз из корня репозитория, репозиторий монтируется в `/work`:
@@ -228,6 +228,55 @@ timeout -s INT 10s ros2 topic hz /turtle1/cmd_vel
 
 ```bash
 python3 .course-kit/v1/tools/check_practice.py PR03 --submission .
+```
+
+## ПР04. Параметры patrol
+
+У ноды `/patrol` три параметра:
+
+| Параметр | По умолчанию | Допустимо |
+|---|---|---|
+| `linear_speed` | 0.5 | 0 … 1 |
+| `turn_rate` | 0.3 | −1 … 1 |
+| `publish_hz` | 10.0 | 1 … 30 |
+
+Значения проверяет функция `check_param` (`patrol/command.py`) до того, как нода что-то меняет. Недопустимое значение отклоняется, прежнее остаётся. При смене `publish_hz` старый таймер удаляется и создаётся новый с периодом `1/publish_hz`.
+
+Сборка и тесты:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-select turtle_bringup patrol
+source install/setup.bash
+python3 -m pytest src/patrol/test 2>&1 | tee evidence/pr04/tests.txt
+```
+
+Запуск: в A `ros2 launch turtle_bringup sim.launch.py`, в B `ros2 run patrol patrol --ros-args -r cmd_vel:=/turtle1/cmd_vel`. В C:
+
+```bash
+ros2 param list /patrol
+ros2 param get /patrol publish_hz
+timeout -s INT 10s ros2 topic hz /turtle1/cmd_vel
+ros2 param set /patrol publish_hz 5.0
+timeout -s INT 10s ros2 topic hz /turtle1/cmd_vel
+ros2 param set /patrol publish_hz 0.0
+ros2 param get /patrol publish_hz
+timeout -s INT 10s ros2 topic hz /turtle1/cmd_vel
+```
+
+Ожидается: 10 Гц, после `5.0` — 5 Гц, `0.0` отклонён (`Setting parameter failed`), частота остаётся 5.
+
+Сервис и действие turtlesim:
+
+```bash
+ros2 service call /clear std_srvs/srv/Empty
+ros2 action list -t
+```
+
+Проверка на хосте из корня репозитория:
+
+```bash
+python3 .course-kit/v1/tools/check_practice.py PR04 --submission .
 ```
 
 Остановить контейнер: `docker rm -f ros`.
