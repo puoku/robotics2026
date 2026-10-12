@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "practice_id": "PR04",
+  "commit": "099dae57588ff9abe6fa19b0ee5f06c3941fda99",
+  "course_kit": {
+    "version": "v1-w06",
+    "archive_sha256": "6eda53e1c566f7f0a7e09d7afe1e5a6f3b98397175a7e57dede9a84c6d14d0fe"
+  },
+  "commands": [
+    "colcon build --symlink-install --packages-select turtle_bringup patrol",
+    "python3 -m pytest src/patrol/test 2>&1 | tee evidence/pr04/tests.txt",
+    "ros2 launch turtle_bringup sim.launch.py",
+    "ros2 run patrol patrol --ros-args -r cmd_vel:=/turtle1/cmd_vel",
+    "ros2 param list /patrol",
+    "ros2 param get /patrol publish_hz",
+    "ros2 param set /patrol publish_hz 5.0",
+    "ros2 param set /patrol publish_hz 0.0",
+    "ros2 param set /patrol publish_hz -5.0",
+    "ros2 param set /patrol linear_speed 0.2",
+    "timeout -s INT 10s ros2 topic hz /turtle1/cmd_vel",
+    "ros2 service call /clear std_srvs/srv/Empty",
+    "ros2 action list -t"
+  ],
+  "tests": [
+    {"name": "test_command.py::test_no_pose_gives_zero_command", "status": "passed"},
+    {"name": "test_command.py::test_pose_gives_forward_and_turn", "status": "passed"},
+    {"name": "test_command.py::test_command_uses_parameters", "status": "passed"},
+    {"name": "test_command.py::test_rate_change_10_to_5_allowed", "status": "passed"},
+    {"name": "test_command.py::test_zero_rate_rejected", "status": "passed"},
+    {"name": "test_command.py::test_negative_rate_rejected", "status": "passed"},
+    {"name": "test_command.py::test_nan_rate_rejected", "status": "passed"},
+    {"name": "test_command.py::test_speed_and_turn_limits", "status": "passed"},
+    {"name": "test_flake8.py::test_flake8", "status": "passed"},
+    {"name": "test_pep257.py::test_pep257", "status": "passed"},
+    {"name": "test_copyright.py::test_copyright", "status": "skipped"},
+    {"name": "граф: publish_hz 10 -> 5 меняет поток /turtle1/cmd_vel с 10.0 до 5.0 Гц, 0.0 отклонён, поток остаётся 5.0 Гц", "status": "passed"}
+  ],
+  "defect": {
+    "reproducer": "Коммит a42be7c: в check_param проверка publish_hz отключена (return None). ros2 param set /patrol publish_hz 0.0 не получает ответа (timeout, exit=124), нода падает с ZeroDivisionError: float division by zero в set_rate (period = 1.0 / hz), /patrol пропадает, издателей /turtle1/cmd_vel нет. Тесты test_zero/negative/nan_rate_rejected падают.",
+    "root_cause": "Без проверки недопустимая частота доходит до set_rate, где вычисляется период 1/publish_hz. Деление на ноль бросает исключение внутри callback параметров, оно выходит из rclpy.spin и завершает ноду.",
+    "proof_after": "Коммит 099dae5 возвращает проверку: те же тесты проходят, ros2 param set /patrol publish_hz 0.0 даёт Setting parameter failed с причиной, publish_hz остаётся 5.0, ros2 topic hz показывает те же 5.0 Гц, нода продолжает работать."
+  },
+  "claims": {
+    "public_tests_passed": true,
+    "defect_reproduced": true,
+    "defect_fixed": true
+  },
+  "time": {
+    "contact_academic_hours": 2,
+    "self_study_hours": 3
+  },
+  "ai_used": true
+}
