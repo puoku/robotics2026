@@ -18,8 +18,6 @@ def choose_command(pose, linear_speed=0.5, turn_rate=0.3):
 
 def check_param(name, value):
     """Вернуть текст ошибки или None, если значение допустимо."""
-    if name == 'publish_hz':
-        return None  # временно: проверка частоты отключена
     low, high = LIMITS[name]
     if not math.isfinite(value):
         return f'{name}: значение должно быть конечным числом'
