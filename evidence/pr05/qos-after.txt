@@ -1,0 +1,108 @@
+# После исправления, ROS_DOMAIN_ID=16, 16.10.2026
+# Тот же launch, только subscriber_reliability:=best_effort, плюс запись record:=true bag_dir:=evidence/pr05/bag
+
+## 1. Живой поток
+
+$ ros2 launch course_bringup patrol.launch.py namespace:=robot_a subscriber_reliability:=best_effort record:=true bag_dir:=evidence/pr05/bag
+[INFO] [launch.user]: namespace: robot_a, subscriber_reliability: best_effort, record: true
+[INFO] [turtlesim_node-1]: process started with pid [404]
+[INFO] [patrol-2]: process started with pid [406]
+[INFO] [pose_relay-3]: process started with pid [408]
+[INFO] [pose_listener-4]: process started with pid [410]
+[INFO] [ros2-5]: process started with pid [412]
+[pose_listener-4] [INFO] [1792158248.411367595] [robot_a.pose_listener]: подписка на sensor_pose, best_effort
+[ros2-5] [INFO] [1792158248.642645720] [rosbag2_recorder]: Starting recording to 'evidence/pr05/bag'
+[ros2-5] [INFO] [1792158248.711594429] [rosbag2_recorder]: Subscribed to topic '/robot_a/sensor_pose'
+[pose_listener-4] [INFO] [1792158250.390854388] [robot_a.pose_listener]: получено сообщений: 125
+[pose_listener-4] [INFO] [1792158252.389043847] [robot_a.pose_listener]: получено сообщений: 230
+...
+[pose_listener-4] [INFO] [1792158310.389574388] [robot_a.pose_listener]: получено сообщений: 3836
+^C[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[ros2-5] [INFO] [1792158310.969805930] [rosbag2_cpp]: Writing remaining messages from cache to the bag. It may take a while
+[ros2-5] [INFO] [1792158311.002952971] [rosbag2_recorder]: Recording stopped
+[INFO] [turtlesim_node-1]: process has finished cleanly [pid 404]
+[INFO] [pose_relay-3]: process has finished cleanly [pid 408]
+[INFO] [patrol-2]: process has finished cleanly [pid 406]
+[INFO] [pose_listener-4]: process has finished cleanly [pid 410]
+[INFO] [ros2-5]: process has finished cleanly [pid 412]
+
+Терминал C, пока launch работал:
+
+$ ros2 topic info -v /robot_a/sensor_pose   (выборка строк)
+Publisher count: 1
+Node name: pose_relay
+Node namespace: /robot_a
+  Reliability: BEST_EFFORT
+Subscription count: 2
+Node name: pose_listener
+Node namespace: /robot_a
+  Reliability: BEST_EFFORT
+Node name: rosbag2_recorder
+Node namespace: /
+  Reliability: BEST_EFFORT
+$ ps -eo args | grep -c '[b]ag record'   # record:=true — recorder запущен из launch
+1
+$ timeout 10s ros2 topic echo /robot_a/sensor_pose --qos-reliability best_effort --once
+x: 4.191403388977051
+y: 6.2323994636535645
+theta: -0.9455705881118774
+linear_velocity: 0.5
+angular_velocity: 0.30000001192092896
+---
+exit=0
+$ timeout -s INT 5s ros2 topic hz /robot_a/sensor_pose
+average rate: 55.234
+	min: 0.000s max: 0.334s std dev: 0.03016s window: 112
+
+## 2. Повтор той же записи
+
+Live-система остановлена, в терминале A:
+
+$ ros2 bag play evidence/pr05/bag --loop --qos-profile-overrides-path config/qos-overrides.yaml
+
+(--loop, чтобы поток не закончился во время проверок)
+
+Терминал C, на одном и том же повторе — сначала профиль «до», потом «после»:
+
+$ ros2 topic info -v /robot_a/sensor_pose   (выборка строк)
+Publisher count: 1
+Node name: rosbag2_player
+Node namespace: /
+  Reliability: BEST_EFFORT
+Subscription count: 0
+$ timeout 10s ros2 topic echo /robot_a/sensor_pose --qos-reliability reliable --once
+[WARN] [1792158392.357829842] [_ros2cli_707]: New publisher discovered on topic '/robot_a/sensor_pose', offering incompatible QoS. No messages will be received from it. Last incompatible policy: RELIABILITY
+!rclpy.ok()
+exit=124
+$ timeout 10s ros2 topic echo /robot_a/sensor_pose --qos-reliability best_effort --once
+x: 6.28867769241333
+y: 8.700380325317383
+theta: 2.673614740371704
+linear_velocity: 0.5
+angular_velocity: 0.30000001192092896
+---
+exit=0
+$ timeout -s INT 5s ros2 topic hz /robot_a/sensor_pose
+average rate: 62.528
+	min: 0.010s max: 0.024s std dev: 0.00261s window: 127
+
+## 3. Запись
+
+$ ros2 bag info evidence/pr05/bag
+
+Files:             bag_0.mcap
+Bag size:          271.8 KiB
+Storage id:        mcap
+ROS Distro:        jazzy
+Duration:          62.252951542s
+Start:             Oct 16 2026 13:44:08.713298929 (1792158248.713298929)
+End:               Oct 16 2026 13:45:10.966250471 (1792158310.966250471)
+Messages:          3853
+Topic information: Topic: /robot_a/sensor_pose | Type: turtlesim/msg/Pose | Count: 3853 | Serialization Format: cdr
+Service:           0
+Service information: 
+
+В записи один поток: /robot_a/sensor_pose, 3853 сообщения за 62 с.
+
+# timeout 10s вместо 3 s из условия: под эмуляцией amd64 сам запуск ros2 topic echo занимает около 1.7 с,
+# и за 3 с CLI не успевает обнаружить издателя даже при совместимом QoS. Таймаут одинаковый для «до» и «после».

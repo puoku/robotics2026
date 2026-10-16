@@ -1,0 +1,18 @@
+$ colcon test --packages-select patrol course_bringup
+
+Summary: 2 packages finished [5.22s]
+  1 package had stderr output: patrol
+
+$ colcon test-result --all
+build/course_bringup/pytest.xml: 3 tests, 0 errors, 0 failures, 1 skipped
+build/patrol/pytest.xml: 16 tests, 0 errors, 0 failures, 1 skipped
+
+Summary: 19 tests, 0 errors, 0 failures, 2 skipped
+
+$ python3 -m pytest src/patrol/test/test_qos.py -v
+src/patrol/test/test_qos.py::test_make_qos_reliable PASSED               [ 20%]
+src/patrol/test/test_qos.py::test_make_qos_best_effort PASSED            [ 40%]
+src/patrol/test/test_qos.py::test_make_qos_unknown_rejected PASSED       [ 60%]
+src/patrol/test/test_qos.py::test_reliable_subscriber_incompatible_with_best_effort_sensor PASSED [ 80%]
+src/patrol/test/test_qos.py::test_best_effort_subscriber_compatible_with_sensor PASSED [100%]
+============================== 5 passed in 0.23s ===============================

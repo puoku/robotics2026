@@ -53,3 +53,18 @@
   - те же тесты на версии с дефектом падают (0, −5, NaN), после возврата проверки проходят;
   - выводы в evidence взяты из этих запусков без изменений, parameters.md прочитан и сверен с выводами;
   - checker PR04 и CI на GitHub проходят
+
+## ПР05
+
+- Использован ИИ: да
+- Модель и версия: Claude Opus 5.5
+- Среда или интерфейс агента: Claude Code (расширение VS Code)
+- Затронутые компоненты: пакет `src/course_bringup` (launch/patrol.launch.py), ноды `pose_relay.py`, `pose_listener.py` и функция `make_qos` (`qos.py`) в `src/patrol`, тесты `test_qos.py`, `config/qos-overrides.yaml`, README.md, CI workflow, оформление `evidence/pr05` (qos-before.txt, qos-after.txt, report.json)
+- Характер помощи: код launch-файла, нод и тестов по условию, запуск команд проверки графа, QoS и записи в терминале C, черновики CI, README и отчёта
+- Как результат был проверен независимо:
+  - launch с reliable-подписчиком, с best_effort и записью, а также повтор записи запускал и останавливал сам в терминале A;
+  - по выводу launch сам видел предупреждения `incompatible QoS ... RELIABILITY` и счётчик `получено сообщений: 0`, а после исправления — растущий счётчик и корректное закрытие записи;
+  - профили издателя и подписчиков сверил по `ros2 topic info -v`, на одной и той же записи сравнил reliable (exit=124) и best_effort (exit=0);
+  - по `ros2 bag info` проверил, что в записи один поток;
+  - выводы в evidence взяты из этих запусков без изменений, qos-before.txt и qos-after.txt прочитаны и сверены;
+  - тесты `colcon test`, checker PR05 и CI на GitHub проходят

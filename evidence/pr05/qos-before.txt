@@ -1,0 +1,74 @@
+# До исправления: launch с subscriber_reliability:=reliable record:=false, ROS_DOMAIN_ID=16, 16.10.2026
+# Издатель pose_relay — BEST_EFFORT, подписчик pose_listener — RELIABLE. Топик виден, сообщений нет.
+
+$ ros2 node list --no-daemon --spin-time 2
+/robot_a/patrol
+/robot_a/pose_listener
+/robot_a/pose_relay
+/turtlesim
+
+$ ros2 topic list
+/parameter_events
+/robot_a/sensor_pose
+/rosout
+/turtle1/cmd_vel
+/turtle1/pose
+$ ros2 topic info -v /robot_a/sensor_pose
+Type: turtlesim/msg/Pose
+
+Publisher count: 1
+
+Node name: pose_relay
+Node namespace: /robot_a
+Topic type: turtlesim/msg/Pose
+Topic type hash: RIHS01_739beba26bcba6920404ba722b7b8321348512f92ea5be235c47251940dd8aa9
+Endpoint type: PUBLISHER
+GID: 01.0f.eb.7d.f6.00.77.67.00.00.00.00.00.00.14.03
+QoS profile:
+  Reliability: BEST_EFFORT
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: pose_listener
+Node namespace: /robot_a
+Topic type: turtlesim/msg/Pose
+Topic type hash: RIHS01_739beba26bcba6920404ba722b7b8321348512f92ea5be235c47251940dd8aa9
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.eb.7d.f8.00.d4.1e.00.00.00.00.00.00.13.04
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+$ ps -eo args | grep -c '[b]ag record'   # record:=false — recorder не запущен
+0
+$ timeout 10s ros2 topic echo /robot_a/sensor_pose --qos-reliability reliable --once
+[WARN] [1792158099.420976512] [_ros2cli_386]: New publisher discovered on topic '/robot_a/sensor_pose', offering incompatible QoS. No messages will be received from it. Last incompatible policy: RELIABILITY
+!rclpy.ok()
+exit=124
+
+# Вывод launch (терминал A), начало; дальше «получено сообщений: 0» каждые 2 с до остановки:
+[INFO] [launch.user]: namespace: robot_a, subscriber_reliability: reliable, record: false
+[INFO] [turtlesim_node-1]: process started with pid [242]
+[INFO] [patrol-2]: process started with pid [244]
+[INFO] [pose_relay-3]: process started with pid [246]
+[INFO] [pose_listener-4]: process started with pid [248]
+[turtlesim_node-1] [INFO] [1792158077.478849960] [turtlesim]: Starting turtlesim with node name /turtlesim
+[turtlesim_node-1] [INFO] [1792158077.506856460] [turtlesim]: Spawning turtle [turtle1] at x=[5.544445], y=[5.544445], theta=[0.000000]
+[pose_relay-3] [WARN] [1792158077.948405585] [robot_a.pose_relay]: New subscription discovered on topic 'sensor_pose', requesting incompatible QoS. No messages will be sent to it. Last incompatible policy: RELIABILITY
+[pose_listener-4] [INFO] [1792158077.951633335] [robot_a.pose_listener]: подписка на sensor_pose, reliable
+[pose_listener-4] [WARN] [1792158077.979886669] [robot_a.pose_listener]: New publisher discovered on topic 'sensor_pose', offering incompatible QoS. No messages will be received from it. Last incompatible policy: RELIABILITY
+[pose_listener-4] [INFO] [1792158079.930483586] [robot_a.pose_listener]: получено сообщений: 0
+[pose_listener-4] [INFO] [1792158081.929364004] [robot_a.pose_listener]: получено сообщений: 0
+[pose_relay-3] [WARN] [1792158099.326820804] [robot_a.pose_relay]: New subscription discovered on topic 'sensor_pose', requesting incompatible QoS. No messages will be sent to it. Last incompatible policy: RELIABILITY
+[pose_listener-4] [INFO] [1792158223.930506542] [robot_a.pose_listener]: получено сообщений: 0
