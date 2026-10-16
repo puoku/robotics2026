@@ -279,4 +279,69 @@ ros2 action list -t
 python3 .course-kit/v1/tools/check_practice.py PR04 --submission .
 ```
 
+## ПР05. Launch, QoS и запись
+
+Пакет `src/course_bringup` с `launch/patrol.launch.py` поднимает систему одной командой: глобальный turtlesim и в пространстве имён (`robot_a` по умолчанию) ноды `patrol`, `pose_relay` и `pose_listener`. Ноды из `src/patrol`:
+
+- `pose_relay` читает `/turtle1/pose` и публикует относительный `sensor_pose` с QoS best_effort;
+- `pose_listener` подписан на `sensor_pose`, надёжность задаётся параметром `reliability`, раз в 2 с пишет число полученных сообщений;
+- профиль QoS собирает функция `make_qos` (`patrol/qos.py`), тесты в `test/test_qos.py`.
+
+Аргументы launch: `namespace` (robot_a), `subscriber_reliability` (best_effort), `record` (false), `bag_dir` (evidence/pr05/bag). Выход `cmd_vel` у patrol переназначен на `/turtle1/cmd_vel`. При `record:=true` запускается `ros2 bag record -s mcap` для `/<namespace>/sensor_pose`.
+
+Сборка и тесты:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-select turtle_bringup patrol course_bringup
+source install/setup.bash
+colcon test --packages-select patrol course_bringup
+colcon test-result --verbose
+```
+
+Сбой: reliable-подписчик против best_effort-сенсора (терминал A — launch, C — проверки):
+
+```bash
+# A
+ros2 launch course_bringup patrol.launch.py \
+  namespace:=robot_a subscriber_reliability:=reliable record:=false
+# C
+ros2 topic list
+ros2 topic info -v /robot_a/sensor_pose
+timeout 10s ros2 topic echo /robot_a/sensor_pose --qos-reliability reliable --once
+```
+
+Ожидается: топик виден, сообщений нет (timeout, код 124), в логах launch предупреждение `incompatible QoS ... RELIABILITY`, `pose_listener` пишет `получено сообщений: 0`.
+
+Исправление и запись:
+
+```bash
+# A
+ros2 launch course_bringup patrol.launch.py \
+  namespace:=robot_a subscriber_reliability:=best_effort \
+  record:=true bag_dir:=evidence/pr05/bag
+# C
+timeout 10s ros2 topic echo /robot_a/sensor_pose --qos-reliability best_effort --once
+```
+
+После Ctrl+C в A запись закрывается. Повтор той же записи:
+
+```bash
+# A
+ros2 bag play evidence/pr05/bag --loop \
+  --qos-profile-overrides-path config/qos-overrides.yaml
+# C
+timeout 10s ros2 topic echo /robot_a/sensor_pose --qos-reliability reliable --once
+timeout 10s ros2 topic echo /robot_a/sensor_pose --qos-reliability best_effort --once
+ros2 bag info evidence/pr05/bag
+```
+
+`timeout 10s` вместо 3 с: под эмуляцией amd64 сам запуск `ros2 topic echo` занимает около 1.7 с.
+
+Проверка на хосте из корня репозитория:
+
+```bash
+python3 .course-kit/v1/tools/check_practice.py PR05 --submission .
+```
+
 Остановить контейнер: `docker rm -f ros`.

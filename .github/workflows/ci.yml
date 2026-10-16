@@ -3,7 +3,7 @@ name: CI
 on: [push]
 
 jobs:
-  pr04:
+  pr05:
     runs-on: ubuntu-24.04
     container: osrf/ros:jazzy-desktop-full
     defaults:
@@ -27,16 +27,17 @@ jobs:
       - name: Build packages
         run: |
           source /opt/ros/jazzy/setup.bash
-          colcon build --packages-select turtle_bringup patrol
-          test -f install/turtle_bringup/share/turtle_bringup/launch/sim.launch.py
+          colcon build --packages-select turtle_bringup patrol course_bringup
+          test -f install/course_bringup/share/course_bringup/launch/patrol.launch.py
 
-      - name: Test patrol
+      - name: Test packages
         run: |
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
-          python3 -m pytest src/patrol/test
+          colcon test --packages-select patrol course_bringup
+          colcon test-result --verbose
 
       - name: Check evidence
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          python3 .course-kit/v1/tools/check_practice.py PR04 --submission .
+          python3 .course-kit/v1/tools/check_practice.py PR05 --submission .
