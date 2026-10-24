@@ -5,11 +5,11 @@
 
 ## Подготовка
 
-Course kit текущей недели (сейчас `v1-w06`) скачивается со страницы курса «Инструменты и входные файлы» и распаковывается в `.course-kit/` (в git не попадает):
+Course kit текущей недели (сейчас `v1-w07`) скачивается со страницы курса «Инструменты и входные файлы» и распаковывается в `.course-kit/` (в git не попадает):
 
 ```bash
 mkdir -p .course-kit
-tar -xzf robotics-course-kit-v1-w06-6eda53e1c566.tar.gz -C .course-kit
+tar -xzf robotics-course-kit-v1-w07-9b7fdd5424d3.tar.gz -C .course-kit
 ```
 
 Контейнер запускается один раз из корня репозитория, репозиторий монтируется в `/work`:
@@ -342,6 +342,50 @@ ros2 bag info evidence/pr05/bag
 
 ```bash
 python3 .course-kit/v1/tools/check_practice.py PR05 --submission .
+```
+
+## ПР06. Модель робота и tf2
+
+Пакет `src/course_description`: `urdf/vehicle.urdf.xacro` — Ackermann-робот по размерам из `models/course_ackermann/model.sdf` (база 0.8 м, колея 0.62 м, радиус колеса 0.12 м), корень дерева `base_link`, сенсоры `camera_link`, `lidar_link`, `imu_link` на фиксированных сочленениях. `launch/display.launch.py` запускает `robot_state_publisher` с развёрнутым Xacro, при `rviz:=true` — ещё RViz. Структурные тесты модели в `test/test_model.py`.
+
+Сборка, проверка модели и тесты:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-select course_description
+source install/setup.bash
+xacro src/course_description/urdf/vehicle.urdf.xacro > /tmp/vehicle.urdf
+check_urdf /tmp/vehicle.urdf
+colcon test --packages-select course_description
+colcon test-result --verbose
+```
+
+Терминал A — `ros2 launch course_description display.launch.py`. Терминал C:
+
+```bash
+ros2 topic info /tf_static --verbose
+timeout 10 ros2 topic echo /tf_static tf2_msgs/msg/TFMessage --once \
+  --qos-durability transient_local --qos-reliability reliable
+timeout 10 ros2 topic echo /tf_static tf2_msgs/msg/TFMessage --once \
+  --qos-durability volatile --qos-reliability reliable
+ros2 run tf2_ros tf2_echo base_link lidar_link
+ros2 run tf2_tools view_frames
+```
+
+Ожидается: `/tf_static` reliable + transient local; поздний подписчик transient local получает преобразования (exit 0), volatile — нет (exit 124); `lidar_link` в `base_link` на `0.28 0 0.38`. Тип указан явно и таймаут 10 с: под эмуляцией CLI не всегда успевает определить тип за 4 с.
+
+RViz (на macOS через RoboStack, в Docker нет экрана), из корня репозитория:
+
+```bash
+ros2 run robot_state_publisher robot_state_publisher --ros-args \
+  -p robot_description:="$(xacro src/course_description/urdf/vehicle.urdf.xacro)"
+rviz2 -d src/course_description/rviz/vehicle.rviz
+```
+
+Проверка на хосте из корня репозитория:
+
+```bash
+python3 .course-kit/v1/tools/check_practice.py PR06 --submission .
 ```
 
 Остановить контейнер: `docker rm -f ros`.

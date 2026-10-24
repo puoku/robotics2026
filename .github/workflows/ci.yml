@@ -3,15 +3,15 @@ name: CI
 on: [push]
 
 jobs:
-  pr05:
+  pr06:
     runs-on: ubuntu-24.04
     container: osrf/ros:jazzy-desktop-full
     defaults:
       run:
         shell: bash
     env:
-      KIT: robotics-course-kit-v1-w06-6eda53e1c566.tar.gz
-      KIT_SHA256: 6eda53e1c566f7f0a7e09d7afe1e5a6f3b98397175a7e57dede9a84c6d14d0fe
+      KIT: robotics-course-kit-v1-w07-9b7fdd5424d3.tar.gz
+      KIT_SHA256: 9b7fdd5424d3d97e47d51dbe23064934585e62135dc2902844dd679529bda929
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,17 +27,20 @@ jobs:
       - name: Build packages
         run: |
           source /opt/ros/jazzy/setup.bash
-          colcon build --packages-select turtle_bringup patrol course_bringup
+          colcon build --packages-select turtle_bringup patrol course_bringup course_description
           test -f install/course_bringup/share/course_bringup/launch/patrol.launch.py
+          test -f install/course_description/share/course_description/urdf/vehicle.urdf.xacro
+          xacro src/course_description/urdf/vehicle.urdf.xacro > /tmp/vehicle.urdf
+          check_urdf /tmp/vehicle.urdf
 
       - name: Test packages
         run: |
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
-          colcon test --packages-select patrol course_bringup
+          colcon test --packages-select patrol course_bringup course_description
           colcon test-result --verbose
 
       - name: Check evidence
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          python3 .course-kit/v1/tools/check_practice.py PR05 --submission .
+          python3 .course-kit/v1/tools/check_practice.py PR06 --submission .

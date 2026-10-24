@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+<robot name="course_ackermann" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- размеры из models/course_ackermann/model.sdf, единицы СИ (м, кг) -->
+  <xacro:property name="wheel_base" value="0.8"/>
+  <xacro:property name="track" value="0.62"/>
+  <xacro:property name="wheel_radius" value="0.12"/>
+  <xacro:property name="wheel_width" value="0.07"/>
+  <xacro:property name="wheel_mass" value="0.8"/>
+
+  <xacro:property name="body_length" value="1.05"/>
+  <xacro:property name="body_width" value="0.52"/>
+  <xacro:property name="body_height" value="0.22"/>
+  <xacro:property name="body_z" value="0.12"/>
+  <xacro:property name="body_mass" value="12.0"/>
+
+  <xacro:property name="knuckle_mass" value="0.2"/>
+  <xacro:property name="steering_limit" value="0.55"/>
+
+  <xacro:property name="sensor_x" value="0.28"/>
+  <xacro:property name="sensor_z" value="0.38"/>
+  <xacro:property name="sensor_size" value="0.05"/>
+  <xacro:property name="sensor_mass" value="0.0333"/>
+
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertial>
+      <mass value="${m}"/>
+      <inertia ixx="${m * (y*y + z*z) / 12}" ixy="0" ixz="0"
+               iyy="${m * (x*x + z*z) / 12}" iyz="0"
+               izz="${m * (x*x + y*y) / 12}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- корпус: начало base_link на оси колёс -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 ${body_z}"/>
+      <geometry><box size="${body_length} ${body_width} ${body_height}"/></geometry>
+      <material name="blue"><color rgba="0.05 0.36 0.72 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${body_z}"/>
+      <geometry><box size="${body_length} ${body_width} ${body_height}"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 ${body_z}"/>
+      <mass value="${body_mass}"/>
+      <inertia ixx="0.55" ixy="0" ixz="0" iyy="1.10" iyz="0" izz="1.40"/>
+    </inertial>
+  </link>
+
+  <!-- колесо: ось вращения y, цилиндр повёрнут на 90 градусов вокруг x -->
+  <xacro:macro name="wheel" params="name parent x y">
+    <link name="${name}_wheel">
+      <visual>
+        <origin rpy="${pi/2} 0 0"/>
+        <geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry>
+        <material name="black"><color rgba="0.04 0.04 0.04 1"/></material>
+      </visual>
+      <collision>
+        <origin rpy="${pi/2} 0 0"/>
+        <geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="${wheel_mass}"/>
+        <inertia
+          ixx="${wheel_mass * (3*wheel_radius*wheel_radius + wheel_width*wheel_width) / 12}"
+          ixy="0" ixz="0"
+          iyy="${wheel_mass * wheel_radius*wheel_radius / 2}" iyz="0"
+          izz="${wheel_mass * (3*wheel_radius*wheel_radius + wheel_width*wheel_width) / 12}"/>
+      </inertial>
+    </link>
+    <joint name="${name}_wheel_joint" type="continuous">
+      <parent link="${parent}"/>
+      <child link="${name}_wheel"/>
+      <origin xyz="${x} ${y} 0"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- поворотный кулак переднего колеса -->
+  <xacro:macro name="knuckle" params="name y">
+    <link name="${name}_knuckle">
+      <inertial>
+        <mass value="${knuckle_mass}"/>
+        <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+      </inertial>
+    </link>
+    <joint name="${name}_steering_joint" type="revolute">
+      <parent link="base_link"/>
+      <child link="${name}_knuckle"/>
+      <origin xyz="${wheel_base/2} ${y} 0"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="${-steering_limit}" upper="${steering_limit}" effort="25" velocity="2.0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:knuckle name="front_left" y="${track/2}"/>
+  <xacro:knuckle name="front_right" y="${-track/2}"/>
+  <xacro:wheel name="front_left" parent="front_left_knuckle" x="0" y="0"/>
+  <xacro:wheel name="front_right" parent="front_right_knuckle" x="0" y="0"/>
+  <xacro:wheel name="rear_left" parent="base_link" x="${-wheel_base/2}" y="${track/2}"/>
+  <xacro:wheel name="rear_right" parent="base_link" x="${-wheel_base/2}" y="${-track/2}"/>
+
+  <!-- сенсоры: все три в одной точке, как в SDF -->
+  <link name="camera_link">
+    <visual>
+      <geometry><box size="${sensor_size} ${sensor_size * 2} ${sensor_size}"/></geometry>
+      <material name="gray"><color rgba="0.6 0.6 0.6 1"/></material>
+    </visual>
+    <collision>
+      <geometry><box size="${sensor_size} ${sensor_size * 2} ${sensor_size}"/></geometry>
+    </collision>
+    <xacro:box_inertia m="${sensor_mass}" x="${sensor_size}" y="${sensor_size * 2}" z="${sensor_size}"/>
+  </link>
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="${sensor_x} 0 ${sensor_z}"/>
+  </joint>
+
+  <link name="lidar_link">
+    <visual>
+      <geometry><cylinder radius="${sensor_size}" length="${sensor_size}"/></geometry>
+      <material name="red"><color rgba="0.8 0.1 0.1 1"/></material>
+    </visual>
+    <collision>
+      <geometry><cylinder radius="${sensor_size}" length="${sensor_size}"/></geometry>
+    </collision>
+    <xacro:box_inertia m="${sensor_mass}" x="${sensor_size * 2}" y="${sensor_size * 2}" z="${sensor_size}"/>
+  </link>
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="${sensor_x} 0 ${sensor_z}"/>
+  </joint>
+
+  <link name="imu_link">
+    <visual>
+      <geometry><box size="${sensor_size / 2} ${sensor_size / 2} ${sensor_size / 2}"/></geometry>
+      <material name="green"><color rgba="0.1 0.7 0.2 1"/></material>
+    </visual>
+    <collision>
+      <geometry><box size="${sensor_size / 2} ${sensor_size / 2} ${sensor_size / 2}"/></geometry>
+    </collision>
+    <xacro:box_inertia m="${sensor_mass}" x="${sensor_size / 2}" y="${sensor_size / 2}" z="${sensor_size / 2}"/>
+  </link>
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="${sensor_x} 0 ${sensor_z}"/>
+  </joint>
+
+</robot>
