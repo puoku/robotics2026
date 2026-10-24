@@ -1,0 +1,97 @@
+# Проверка модели (ПР06), Docker osrf/ros:jazzy-desktop-full, 24.10.2026
+
+## 1. Исправная модель (64a0230), lidar_joint: parent base_link
+
+$ xacro src/course_description/urdf/vehicle.urdf.xacro > /tmp/vehicle.urdf
+$ check_urdf /tmp/vehicle.urdf
+robot name is: course_ackermann
+---------- Successfully Parsed XML ---------------
+root Link: base_link has 7 child(ren)
+    child(1):  camera_link
+    child(2):  front_left_knuckle
+        child(1):  front_left_wheel
+    child(3):  front_right_knuckle
+        child(1):  front_right_wheel
+    child(4):  imu_link
+    child(5):  lidar_link
+    child(6):  rear_left_wheel
+    child(7):  rear_right_wheel
+exit=0
+$ colcon test --packages-select course_description
+Summary: 12 tests, 0 errors, 0 failures, 1 skipped
+
+## 2. Неверный parent (3367f3e), lidar_joint: parent camera_link, offset тот же 0.28 0 0.38
+
+$ xacro ... > /tmp/vehicle.urdf && check_urdf /tmp/vehicle.urdf
+robot name is: course_ackermann
+---------- Successfully Parsed XML ---------------
+root Link: base_link has 6 child(ren)
+    child(1):  camera_link
+        child(1):  lidar_link
+    child(2):  front_left_knuckle
+        child(1):  front_left_wheel
+    child(3):  front_right_knuckle
+        child(1):  front_right_wheel
+    child(4):  imu_link
+    child(5):  rear_left_wheel
+    child(6):  rear_right_wheel
+exit=0
+$ colcon test --packages-select course_description
+Summary: 1 package finished [0.93s]
+  1 package had test failures: course_description
+$ colcon test-result --verbose
+build/course_description/pytest.xml: 12 tests, 0 errors, 2 failures, 1 skipped
+- course_description.test.test_model test_lidar_parent_is_base_link
+  <<< failure message
+    AssertionError: assert 'camera_link' == 'base_link'
+      - base_link
+      + camera_link
+  >>>
+- course_description.test.test_model test_sensor_positions_in_base_link
+  <<< failure message
+    assert [0.56, 0.0, 0.76] == approx([0.28 ...38 ± 3.8e-07])
+      comparison failed. Mismatched elements: 2 / 3:
+      Max absolute difference: 0.38
+      Max relative difference: 0.5
+      Index | Obtained | Expected      
+      0     | 0.56     | 0.28 ± 2.8e-07
+      2     | 0.76     | 0.38 ± 3.8e-07
+  >>>
+Summary: 12 tests, 0 errors, 2 failures, 1 skipped
+
+check_urdf принимает дерево (exit=0): структурно оно корректно, просто lidar_link стал ребёнком camera_link.
+Ошибку ловят тесты: родитель не base_link, а положение лидара в base_link 0.56 0 0.76 вместо 0.28 0 0.38 — offset сложился дважды.
+
+## 3. Связь возвращена (5af3d43), тот же тест
+
+$ xacro src/course_description/urdf/vehicle.urdf.xacro > /tmp/vehicle.urdf
+$ check_urdf /tmp/vehicle.urdf
+robot name is: course_ackermann
+---------- Successfully Parsed XML ---------------
+root Link: base_link has 7 child(ren)
+    child(1):  camera_link
+    child(2):  front_left_knuckle
+        child(1):  front_left_wheel
+    child(3):  front_right_knuckle
+        child(1):  front_right_wheel
+    child(4):  imu_link
+    child(5):  lidar_link
+    child(6):  rear_left_wheel
+    child(7):  rear_right_wheel
+exit=0
+$ colcon test --packages-select course_description
+Summary: 1 package finished [0.95s]
+$ colcon test-result --verbose
+Summary: 12 tests, 0 errors, 0 failures, 1 skipped
+
+$ python3 -m pytest src/course_description/test/test_model.py -v
+src/course_description/test/test_model.py::test_single_root_is_base_link PASSED [ 11%]
+src/course_description/test/test_model.py::test_tree_connected_and_acyclic PASSED [ 22%]
+src/course_description/test/test_model.py::test_sensors_present PASSED   [ 33%]
+src/course_description/test/test_model.py::test_lidar_parent_is_base_link PASSED [ 44%]
+src/course_description/test/test_model.py::test_sensor_positions_in_base_link PASSED [ 55%]
+src/course_description/test/test_model.py::test_wheels_match_parameters PASSED [ 66%]
+src/course_description/test/test_model.py::test_visual_and_collision_separate PASSED [ 77%]
+src/course_description/test/test_model.py::test_inertia_physically_valid PASSED [ 88%]
+src/course_description/test/test_model.py::test_check_urdf PASSED        [100%]
+============================== 9 passed in 0.10s ===============================

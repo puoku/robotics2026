@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "practice_id": "PR06",
+  "commit": "5af3d438c67491daf773c183e7c1d4ea9a0798be",
+  "course_kit": {
+    "version": "v1-w07",
+    "archive_sha256": "9b7fdd5424d3d97e47d51dbe23064934585e62135dc2902844dd679529bda929"
+  },
+  "commands": [
+    "ros2 pkg create --build-type ament_python --license Apache-2.0 course_description",
+    "colcon build --symlink-install --packages-select course_description",
+    "xacro src/course_description/urdf/vehicle.urdf.xacro > /tmp/vehicle.urdf",
+    "check_urdf /tmp/vehicle.urdf",
+    "colcon test --packages-select course_description",
+    "ros2 launch course_description display.launch.py",
+    "ros2 topic info /tf_static --verbose",
+    "timeout 10 ros2 topic echo /tf_static tf2_msgs/msg/TFMessage --once --qos-durability transient_local --qos-reliability reliable",
+    "timeout 10 ros2 topic echo /tf_static tf2_msgs/msg/TFMessage --once --qos-durability volatile --qos-reliability reliable",
+    "ros2 run tf2_ros tf2_echo base_link lidar_link",
+    "ros2 run tf2_tools view_frames",
+    "rviz2 -d src/course_description/rviz/vehicle.rviz"
+  ],
+  "tests": [
+    {"name": "test_model.py::test_single_root_is_base_link", "status": "passed"},
+    {"name": "test_model.py::test_tree_connected_and_acyclic", "status": "passed"},
+    {"name": "test_model.py::test_sensors_present", "status": "passed"},
+    {"name": "test_model.py::test_lidar_parent_is_base_link", "status": "passed"},
+    {"name": "test_model.py::test_sensor_positions_in_base_link", "status": "passed"},
+    {"name": "test_model.py::test_wheels_match_parameters", "status": "passed"},
+    {"name": "test_model.py::test_visual_and_collision_separate", "status": "passed"},
+    {"name": "test_model.py::test_inertia_physically_valid", "status": "passed"},
+    {"name": "test_model.py::test_check_urdf", "status": "passed"},
+    {"name": "test_flake8.py::test_flake8", "status": "passed"},
+    {"name": "test_pep257.py::test_pep257", "status": "passed"},
+    {"name": "test_copyright.py::test_copyright", "status": "skipped"},
+    {"name": "tf_static: reliable + transient local, поздний подписчик transient_local получает 3 преобразования (exit=0), volatile — нет (exit=124)", "status": "passed"},
+    {"name": "tf2_echo base_link lidar_link = 0.28 0 0.38", "status": "passed"}
+  ],
+  "defect": {
+    "reproducer": "Коммит 3367f3e: parent у lidar_joint заменён на camera_link с прежним offset 0.28 0 0.38. check_urdf принимает дерево (exit=0), но tf2_echo base_link lidar_link даёт 0.56 0 0.76, view_frames показывает parent camera_link, тесты test_lidar_parent_is_base_link и test_sensor_positions_in_base_link падают.",
+    "root_cause": "Offset сочленения задаётся относительно родителя. С родителем camera_link смещение 0.28 0 0.38 прибавилось к положению камеры, и лидар оказался в 0.56 0 0.76 от base_link. Структурно дерево связное, поэтому check_urdf ошибку не видит — её видно только по ожидаемому parent и положению.",
+    "proof_after": "Коммит 5af3d43 возвращает parent base_link: check_urdf exit=0, colcon test 12 тестов без ошибок (1 skipped), tf2_echo base_link lidar_link = 0.28 0 0.38, view_frames показывает parent base_link."
+  },
+  "claims": {
+    "public_tests_passed": true,
+    "defect_reproduced": true,
+    "defect_fixed": true
+  },
+  "time": {
+    "contact_academic_hours": 2,
+    "self_study_hours": 3
+  },
+  "ai_used": true
+}

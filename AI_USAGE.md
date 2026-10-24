@@ -68,3 +68,18 @@
   - по `ros2 bag info` проверил, что в записи один поток;
   - выводы в evidence взяты из этих запусков без изменений, qos-before.txt и qos-after.txt прочитаны и сверены;
   - тесты `colcon test`, checker PR05 и CI на GitHub проходят
+
+## ПР06
+
+- Использован ИИ: да
+- Модель и версия: Claude Opus 5.5
+- Среда или интерфейс агента: Claude Code (расширение VS Code)
+- Затронутые компоненты: пакет `src/course_description` (`urdf/vehicle.urdf.xacro`, `launch/display.launch.py`, `rviz/vehicle.rviz`, тесты `test_model.py`), README.md, CI workflow, оформление `evidence/pr06` (frames.md, model-check.txt, tf-qos.txt, report.json)
+- Характер помощи: Xacro-модель по размерам из SDF курса, launch-файл, структурные тесты, коммит с неверным parent лидара и коммит с его возвратом, запуск команд проверки QoS `/tf_static`, `tf2_echo`, `view_frames` и `check_urdf` в терминале C, черновики CI, README и отчёта
+- Как результат был проверен независимо:
+  - launch с `robot_state_publisher` для исправной модели, модели с неверным parent и после исправления запускал и останавливал сам в терминале A;
+  - модель сам открыл в RViz на macOS, опубликовал нулевые положения колёс и сверил по картинке корпус, колёса и сенсоры;
+  - по `tf2_echo` и `view_frames` сравнил положение лидара 0.56 0 0.76 при неверном parent и 0.28 0 0.38 после исправления;
+  - видел, что `check_urdf` принимает дерево с неверным parent, а тесты ожидаемого parent и положения падают;
+  - выводы в evidence взяты из этих запусков без изменений, frames.md, model-check.txt и tf-qos.txt прочитаны и сверены;
+  - тесты `colcon test`, checker PR06 и CI на GitHub проходят

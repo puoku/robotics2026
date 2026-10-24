@@ -1,0 +1,120 @@
+## topic info /tf_static
+Type: tf2_msgs/msg/TFMessage
+
+Publisher count: 1
+
+Node name: robot_state_publisher
+Node namespace: /
+Topic type: tf2_msgs/msg/TFMessage
+Topic type hash: RIHS01_e369d0f05a23ae52508854b66f6aa0437f3449d652e8cbf22d5abe85d020f087
+Endpoint type: PUBLISHER
+GID: 01.0f.eb.7d.e7.00.c0.df.00.00.00.00.00.00.15.03
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: transform_listener_impl_555555922030
+Node namespace: /
+Topic type: tf2_msgs/msg/TFMessage
+Topic type hash: RIHS01_e369d0f05a23ae52508854b66f6aa0437f3449d652e8cbf22d5abe85d020f087
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.eb.7d.65.01.68.ba.00.00.00.00.00.00.19.04
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+## echo transient_local
+transforms:
+- header:
+    stamp:
+      sec: 1792831636
+      nanosec: 579300301
+    frame_id: base_link
+  child_frame_id: camera_link
+  transform:
+    translation:
+      x: 0.28
+      y: 0.0
+      z: 0.38
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+- header:
+    stamp:
+      sec: 1792831636
+      nanosec: 579300301
+    frame_id: base_link
+  child_frame_id: imu_link
+  transform:
+    translation:
+      x: 0.28
+      y: 0.0
+      z: 0.38
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+- header:
+    stamp:
+      sec: 1792831636
+      nanosec: 579300301
+    frame_id: base_link
+  child_frame_id: lidar_link
+  transform:
+    translation:
+      x: 0.28
+      y: 0.0
+      z: 0.38
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+---
+exit=0
+## echo volatile
+!rclpy.ok()
+exit=124
+## topic info /tf
+Type: tf2_msgs/msg/TFMessage
+
+Publisher count: 1
+
+Node name: robot_state_publisher
+Node namespace: /
+Topic type: tf2_msgs/msg/TFMessage
+Topic type hash: RIHS01_e369d0f05a23ae52508854b66f6aa0437f3449d652e8cbf22d5abe85d020f087
+Endpoint type: PUBLISHER
+GID: 01.0f.eb.7d.e7.00.c0.df.00.00.00.00.00.00.14.03
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+## Вывод
+/tf_static у robot_state_publisher — RELIABLE + TRANSIENT_LOCAL: издатель хранит последнее сообщение, поэтому поздний подписчик с transient_local сразу получил все три фиксированных преобразования (exit=0), а подписчик с volatile ничего не получил за 10 с (exit=124) — прошлое ему не отдаётся, а новых сообщений на /tf_static не будет.
+/tf — RELIABLE + VOLATILE: там подвижные звенья и одометрия, они публикуются постоянно с новой меткой времени, и старое значение новому подписчику не нужно. Фиксированные звенья не меняются и публикуются один раз, поэтому их и надо хранить для тех, кто подключится позже.
+Подписчик transform_listener_impl_... в topic info — слушатель tf из запущенных перед этим tf2_echo/view_frames; при снимке процессов его уже не было, это задержка обнаружения.
+Тип указан явно и таймаут 10 с вместо 4: под эмуляцией amd64 CLI не всегда успевает определить тип топика за 4 с.
