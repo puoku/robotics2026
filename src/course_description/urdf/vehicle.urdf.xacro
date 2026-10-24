@@ -130,7 +130,7 @@
     <xacro:box_inertia m="${sensor_mass}" x="${sensor_size * 2}" y="${sensor_size * 2}" z="${sensor_size}"/>
   </link>
   <joint name="lidar_joint" type="fixed">
-    <parent link="camera_link"/>
+    <parent link="base_link"/>
     <child link="lidar_link"/>
     <origin xyz="${sensor_x} 0 ${sensor_z}"/>
   </joint>
